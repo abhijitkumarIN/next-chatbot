@@ -21,12 +21,20 @@ export default function ChatBot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Check system preference on mount
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setIsDark(prefersDark);
-    // Apply theme to document
-    if (prefersDark) {
+    // Read saved preference first, then fallback to system
+    const saved = localStorage.getItem('theme');
+    let preferDark = false;
+    if (saved === 'dark') preferDark = true;
+    else if (saved === 'light') preferDark = false;
+    else preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    setIsDark(preferDark);
+    if (preferDark) {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
     }
   }, []);
 
@@ -42,8 +50,17 @@ export default function ChatBot() {
   }, []);
 
   const toggleTheme = () => {
-    setIsDark(!isDark);
-    document.documentElement.classList.toggle('dark');
+    const next = !isDark;
+    setIsDark(next);
+    if (next) {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
   };
 
   const typewriterEffect = (text: string, messageId: string) => {
@@ -145,15 +162,15 @@ export default function ChatBot() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground transition-colors duration-300">
+    <div className="chat-panel mx-auto flex flex-col h-[90vh] bg-background/90 dark:bg-[#071127]/80 text-foreground transition-colors duration-300 rounded-2xl shadow-2xl overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
+      <header className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-white/60 dark:bg-[#071127]/60 backdrop-blur-sm">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
             <Bot className="w-5 h-5 text-white" />
           </div>
-          <h1 className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            AI Assistant
+          <h1 className="text-lg font-semibold tracking-tight">
+            Assistant
           </h1>
         </div>
         <button
@@ -170,14 +187,14 @@ export default function ChatBot() {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-md">
               <Bot className="w-8 h-8 text-white" />
             </div>
             <h2 className="text-2xl font-semibold mb-2">How can I help you today?</h2>
-            <p className="text-gray-600 dark:text-gray-400 max-w-md">
+            <p className="text-gray-600 dark:text-gray-300 max-w-md">
               Ask me anything and I&apos;ll do my best to provide helpful, accurate information.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-8 w-full max-w-2xl">
@@ -201,20 +218,21 @@ export default function ChatBot() {
           messages.map((message) => (
             <div
               key={message.id}
-              className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex gap-3 items-end ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {message.role === 'assistant' && (
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
               )}
-              <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                  message.role === 'user'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white ml-auto'
-                    : 'bg-gray-100 dark:bg-gray-800 text-foreground border border-gray-200 dark:border-gray-700'
-                }`}
-              >
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
+                    message.role === 'user'
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white ml-auto'
+                      : 'bg-white dark:bg-[#071127] text-foreground border border-gray-100 dark:border-gray-800'
+                  }`}
+                  style={{ boxShadow: message.role === 'assistant' ? '0 6px 20px rgba(16,24,40,0.06)' : undefined }}
+                >
                 <div className="max-w-none">
                   {message.role === 'user' ? (
                     <p className="whitespace-pre-wrap text-sm m-0">{message.content}</p>
@@ -227,7 +245,7 @@ export default function ChatBot() {
                     </div>
                   )}
                 </div>
-                <span className="text-xs opacity-70 mt-1 block">
+                <span className="text-xs opacity-60 mt-1 block">
                   {message.timestamp.toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
